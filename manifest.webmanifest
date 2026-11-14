@@ -1,1 +1,27 @@
-{"name":"LOOP Academy — AI Developer","short_name":"LOOP","description":"AI Engineering: персональная диагностика, официальный учебный маршрут, практика и тесты.","id":"./","start_url":"./","scope":"./","display":"standalone","background_color":"#090a11","theme_color":"#090a11","lang":"ru","orientation":"portrait-primary","icons":[{"src":"./assets/icon-192.png","sizes":"192x192","type":"image/png","purpose":"any maskable"},{"src":"./assets/icon-512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}]}
+{
+  "name": "LOOP Studio — AI Developer Academy",
+  "short_name": "LOOP",
+  "description": "Учебная среда AI Developer: официальные курсы, задания, диагностика и ежедневные тренировки",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#090a11",
+  "theme_color": "#090a11",
+  "lang": "ru",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "./assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,30 +1,46 @@
-# LOOP Academy 2.0
+# LOOP Studio — AI Developer Academy · v3
 
-Mobile-first, offline-friendly AI-development learning companion (PWA). Free and open-source style personal training tool.
+A free, mobile-first, offline-friendly progressive web app for learning AI development through **official-source guided practice**, applied knowledge checks, and repeatable small projects. Built without paid APIs or a remote user database. The project is independent of referenced course authors.
 
-## What is implemented
-- 5 career paths. **AI Developer** has nine staged modules, including safe AI-system security.
-- 14-question formative placement assessment in 7 domains. Scores are tentative and never certify practical ability.
-- Personal focus recommendations, 10-question level rounds, daily warmup, 60-second sprint, mistake review.
-- A task/checklist for each module, linked to **official primary sources**. Marking a lab complete saves a **self-reported result**, not machine-verified code.
-- Source directory with official Python, GitHub, Microsoft, Hugging Face, OpenAI, Google, MCP resources plus an independently authored community course.
-- Offline shell after the first online load; profile, quiz answers, assessment and lab notes stored locally in the browser. No cloud login or sync.
-- Keeps legacy `loop-ai-v1` progress intact; new coaching data is stored separately in `loop-ai-coach-v2`.
-- Export/import in settings includes new coaching data. The first launch after an update may require one normal online reload to refresh cached files.
+## What changed in v3
 
-## Deployment
-Push `index.html`, `style.css`, `app.mjs`, `engine.mjs`, `content.mjs`, `coach.mjs`, `manifest.webmanifest`, `sw.js`, `icon.svg` and `assets/` to the root of a public GitHub repository. GitHub Pages: Settings → Pages → Deploy from main/root. Install in Chrome → menu → Add to home screen. API calls are NOT made by this app.
+- New responsive visual system: designed course covers, microinteraction, meaningful hierarchy, first-party art made with CSS/SVG rather than stock images, graceful reduced-motion mode.
+- **Honest baseline assessment:** 12 skill probes across six domains, including six typed answers and six applied multiple-choice scenarios. The question set rotates between attempts, four plausible options, explicit *I don't know*, and confidence (reasoned / uncertain / guessed) weighting. Old 13/14 scores no longer certify competence.
+- **Daily training:** 90-second / 5-scenario micro-sprint, daily rotation, adaptive priority for weaker or review-due topics. Current question bank: 36 applied probes (18 are alternate scenarios). Review schedule stored per user in the browser.
+- **9-stage AI Developer learning path** with real URLs to primary sources and clear practical deliverables, plus original other career tracks.
+- **Prompt Lab:** three original writing/design scenarios and transparent rubric-based self-assessment, not an automatic AI grader.
+- **Skills:** separate provisional quiz estimates, sprint attempts, and self-attested practical work; no invented professional qualification or claims that a checkbox proves a project works.
+- Local migration: retains `loop-ai-v1` profile, previously unlocked levels and XP, `loop-ai-coach-v2` data, adds `loop-mastery-v3`. Export/import includes new data.
+- Updated service worker uses network-first for code when online and cache fallback when offline. Cache bumped with v3 deployment.
 
-## Tests
-```
+## What it is NOT
+
+- Not a replacement for Microsoft's, Hugging Face's or Google's official course platform; original source links go straight to the publisher.
+- Does not inspect your actual code, connect to GitHub account, use an LLM to mark open writing or prove professional competence.
+- No guarantee of a job, certification or real-world mastery just from finishing quizzes.
+- Question bank is finite; varied cases and spaced reviews can be repeated indefinitely, but novel source lessons do not magically appear.
+- Local-only storage, no sync across devices; export progress before changing browser or phone.
+
+## Learning use
+
+1. Choose **AI Developer** (or another track), follow the applied diagnostic. Guessing isn't rewarded as confidently knowing.
+2. Start the recommended stage. Read its linked official documentation rather than treating the LOOP summary as the entire course.
+3. Build a deliverable outside the app, test it and record the evidence in its practice card.
+4. Do a 90-second micro-sprint as retrieval practice and work through missed areas.
+5. Reassess after real practice to check retained knowledge; treat the score as provisional.
+
+## Development
+
+No npm dependencies for runtime. Requires Node 20+ for testing/building.
+
+```bash
 npm test
 npm run build
-python tests/v2_smoke.py
+python tests/v3_smoke.py    # headless Chromium / Playwright available
 ```
-The Playwright smoke test uses a standalone build through `page.set_content` to work in restricted environments; it verifies UI workflows. It does NOT simulate production HTTPS/service-worker install and must not be presented as physical Android testing.
 
-## Honest scope
-This app is not affiliated with the authors of linked courses, does not mirror or replace their full lessons and does not issue their certificates. Advanced external API exercises may have provider usage costs. The quiz bank and procedural variations can be reused indefinitely; new theoretical subjects are finite until further content updates. Progress is not synced across devices unless the user exports/imports a backup.
+Deploy files at repo root (`index.html`, `app.mjs`, `mastery.mjs`, `studio.css`, original content, icons, manifest, service worker) on HTTPS GitHub Pages. Chrome on Android can offer installation as a PWA when Chromium installability rules are met. Layout tested at 320–412px using Playwright's desktop Chromium mobile emulation; not equivalent to physical Android.
 
-## Sources
-See `coach.mjs` (`OFFICIAL_COURSES`) for direct links and `RESEARCH.md` for the project sourcing rationale. Topics include defensive prompt-injection and boundary testing; nothing in the app requires bypassing access controls or unsafe behavior.
+## Source of truth
+
+`CURRICULUM.md` maps the stages and learning outcomes to real primary sources. `mastery.mjs` includes original practice questions, source links and deterministic scoring. No copyrighted course text is mirrored beyond brief summaries. `tests/mastery.test.mjs` covers fairness and adaptive selection.

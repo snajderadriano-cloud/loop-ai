@@ -1,6 +1,5 @@
-const CACHE='loop-academy-v2';
-const ASSETS=['./','./index.html','./style.css','./app.mjs','./engine.mjs','./content.mjs','./coach.mjs','./manifest.webmanifest','./assets/icon-192.png','./assets/icon-512.png','./icon.svg'];
-self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
-self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('loop-ai-gym-')||k.startsWith('loop-academy-')).filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
-self.addEventListener('fetch',e=>{const u=new URL(e.request.url);if(e.request.method!=='GET'||u.origin!==location.origin||!u.pathname.startsWith(new URL(self.registration.scope).pathname))return;
- e.respondWith(caches.match(e.request).then(hit=>hit||fetch(e.request).then(resp=>{if(resp.ok){const copy=resp.clone();caches.open(CACHE).then(c=>c.put(e.request,copy)).catch(()=>{});}return resp;})));});
+const CACHE='loop-studio-v3-20261114';
+const ASSETS=['./','./index.html','./style.css','./studio.css','./app.mjs','./engine.mjs','./content.mjs','./coach.mjs','./mastery.mjs','./manifest.webmanifest','./assets/icon-192.png','./assets/icon-512.png','./icon.svg'];
+self.addEventListener('install', event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting())));
+self.addEventListener('activate', event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim())));
+self.addEventListener('fetch',event=>{const req=event.request,url=new URL(req.url);if(req.method!=='GET'||url.origin!==location.origin)return;const dynamic=req.mode==='navigate'||/\.(html|mjs|css)$/.test(url.pathname);if(dynamic){event.respondWith(fetch(req).then(response=>{if(response.ok){const saved=response.clone();caches.open(CACHE).then(c=>c.put(req,saved)).catch(()=>{});}return response;}).catch(()=>caches.match(req).then(r=>r||caches.match('./index.html'))));return;}event.respondWith(caches.match(req).then(cached=>cached||fetch(req).then(response=>{if(response.ok){const copy=response.clone();caches.open(CACHE).then(c=>c.put(req,copy)).catch(()=>{});}return response;})));});
