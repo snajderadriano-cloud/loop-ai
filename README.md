@@ -49,3 +49,10 @@ Deploy files at repo root (`index.html`, `app.mjs`, `mastery.mjs`, `studio.css`,
 ## Personal AI Product Developer route (local-only)
 
 The dedicated career route offers eight outcomes mapped to Python, GitHub Skills, MDN, Microsoft, OpenAI, and Hugging Face original sources. The visitor selects a focus (products/agents/pipelines/tooling) and daily time (15/25/45 min), stored in `loop-personal-v1` only on the device. No inferred sensitive profile or name is published in the repository. Progress requires a self-reported artifact note, not just a high quiz score; code is not automatically graded. Export/import includes the personalized route.
+
+## v4 · Workbench (in-app practice)
+
+- The first `SPEC.md` assignment now opens an **actual Markdown editor** inside the lab. It saves drafts in `loop-workbench-v1`, checks that the document has a goal, three scenarios, constraints, and four acceptance criteria, and downloads the real `SPEC.md`. A green document check only verifies structure, not business quality or professional mastery.
+- Python lessons open an in-browser `checker.py` editor with **real Python execution via Pyodide 0.27.7**, in a dedicated Web Worker, capture of stdout/stderr and seven real assertion cases. The first run loads WebAssembly from the Pyodide CDN; Python execution requires network on first run and is not guaranteed offline. This is not an operating-system shell, a secure execution service, or a full `pip` environment.
+- User code runs on their device. No paid API, backend, login, remote user data, or shared terminal is added. Execution is cancellable on a 90-second timeout. Don't run untrusted code. Code and drafts persist locally and are included in Export/Import.
+- UX test: `python tests/workbench_smoke.py`; logic: `node --test tests/workbench.test.mjs`.

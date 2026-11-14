@@ -3,6 +3,7 @@ import {INITIAL_STATE,validateProfile,normalizeState,buildRound,gradeRound,updat
 import {OFFICIAL_COURSES,SKILLS,DIAGNOSTIC,LABS,DEVELOPER_PATH,analyzePlacement,normalizeCoach,applyPracticeEvidence,hasPracticeEvidence,updateSkillSignals,recommendNext} from './coach.mjs';
 import {PROBES,DOMAINS,buildAssessment,gradeAttempt,analyzeAssessment,scheduleReview,selectDailyDrill,MODULE_GUIDES,PROMPT_CLINIC,SOURCED_PROGRAMS} from './mastery.mjs';
 import {STEPS,FOCUSES,normalizePersonal,selectCurrentStep,submitEvidence,makeDailyPlan} from './personal.mjs';
+import {WORKBENCH_KEY,makeDraft,detectDocument,inspectSpec,validateWorkbenchState,markRunResult} from './workbench.mjs';
 const KEY='loop-ai-v1';const ACTIVE='loop-ai-active-v1';const COACH_KEY='loop-ai-coach-v2';const PERSONAL_KEY='loop-personal-v1';
 const $=s=>document.querySelector(s);const app=document.getElementById('app');
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -14,6 +15,9 @@ let state;try{state=normalizeState(JSON.parse(localStorage.getItem(KEY)||'null')
 let coach;try{coach=normalizeCoach(JSON.parse(localStorage.getItem(COACH_KEY)||'null'));}catch{coach=normalizeCoach(null)}
 let personal;try{personal=normalizePersonal(JSON.parse(localStorage.getItem(PERSONAL_KEY)||'null'));}catch{personal=normalizePersonal(null)}
 function savePersonal(){try{localStorage.setItem(PERSONAL_KEY,JSON.stringify(personal))}catch{}}
+let workbench;try{workbench=validateWorkbenchState(JSON.parse(localStorage.getItem(WORKBENCH_KEY)||'null'));}catch{workbench=validateWorkbenchState(null)}
+function saveWorkbench(){try{localStorage.setItem(WORKBENCH_KEY,JSON.stringify(workbench))}catch{}}
+let workbenchKind='spec', workbenchFrom='lab', workbenchMessage='', workbenchWorker=null, workbenchTimeout=null;
 let view=state.profile?'home':'onboard';let onbStep=0;let draft={name:'',track:'builder',level:'beginner',minutes:15};let assessment=null,labModule=null,lessonModule=null;
 let selectedMod=null;let session=null;let lastResult=null;let modal=null;let interval=null;let pending=null;let lastTick=Date.now();let toastTimeout=null;
 function save(){try{localStorage.setItem(KEY,JSON.stringify(state))}catch{}};
@@ -26,7 +30,7 @@ function track(){return findTrack(state.selectedTrack||state.profile?.track)||TR
 function currentModule(){return track().modules[state.unlocked[track().id]||0]||track().modules[0]}
 function nav(active){const tabs=[['home','home','Главная'],['paths','map','Пути'],['library','book','Программа'],['stats','chart','Навыки']];return `<nav class="bottomnav" aria-label="Главное меню">${tabs.map(([id,n,l])=>`<button data-act="nav" data-to="${id}" class="navbtn ${active===id?'active':''}" ${active===id?'aria-current="page"':''}>${svg(n)}<span>${l}</span></button>`).join('')}</nav>`}
 function header(t,right=''){return `<div class="backbar"><button class="back" data-act="back" aria-label="Назад">←</button><strong>${esc(t)}</strong><span class="right">${right}</span></div>`}
-function render(){document.title='LOOP · AI Academy';app.innerHTML=({onboard:renderOnboarding,home:renderHomeStudio,paths:renderPaths,library:renderLibraryStudio,stats:renderStatsStudio,settings:renderSettings,lesson:renderLesson,game:renderGame,result:renderResult,diagnostic:renderDiagnostic,diagnosticResult:renderDiagnosticResult,lab:renderLab,courses:renderCoursesStudio,career:renderCareer,audit:renderAudit,auditResult:renderAuditResult,dojo:renderDojo,dojoResult:renderDojoResult,clinic:renderClinic}[view]||renderHome)();if(modal)app.insertAdjacentHTML('beforeend',renderModal());if(view==='game')updateClockDOM();}
+function render(){document.title='LOOP · AI Academy';app.innerHTML=({onboard:renderOnboarding,home:renderHomeStudio,paths:renderPaths,library:renderLibraryStudio,stats:renderStatsStudio,settings:renderSettings,lesson:renderLesson,game:renderGame,result:renderResult,diagnostic:renderDiagnostic,diagnosticResult:renderDiagnosticResult,lab:renderLab,courses:renderCoursesStudio,career:renderCareer,audit:renderAudit,auditResult:renderAuditResult,dojo:renderDojo,dojoResult:renderDojoResult,clinic:renderClinic,workbench:renderWorkbench}[view]||renderHome)();if(modal)app.insertAdjacentHTML('beforeend',renderModal());if(view==='game')updateClockDOM();}
 function renderOnboarding(){
  const intro=`<div class="logo-line">${brand()}<span class="round-count">01 / 03</span></div>
  <div class="onboard-art"><div class="orbit o1"></div><div class="orbit o2"></div><div class="orbit-core"><span>⌁</span></div><span class="onboard-orbit-label label-left">LEARN</span><span class="onboard-orbit-label label-right">BUILD</span></div>
@@ -123,8 +127,64 @@ function renderDiagnostic(){
  <button class="text-button" data-act="diagnostic-exit">Пройти позже</button></main>`;
 }
 function renderDiagnosticResult(){const d=coach.placement,t=track(),m=t.modules[Math.min(d?.recommended??0,t.modules.length-1)];return `<main class="view diagnostic-result">${header('Результат диагностики')}<span class="eyebrow">ТВОЯ ОТПРАВНАЯ ТОЧКА</span><h1 class="h1">Теперь знаем,<br><em>с чего начать.</em></h1><div class="diagnostic-score"><strong>${d?.correct||0}<span>/${d?.total||14}</span></strong><p>Верных ответов<br>в короткой диагностике</p></div><div class="section-header"><h2>Предварительная карта навыков</h2></div><div class="skill-panel">${SKILLS.map(sk=>{const n=d?.skills?.[sk.id]||0;return `<div class="skill-row"><div class="skill-label"><span>${esc(sk.icon)} ${esc(sk.name)}</span><b>${n}%</b></div><div class="skill-meter"><i style="width:${n}%"></i></div></div>`}).join('')}</div><div class="recommend-panel"><span class="eyebrow">НАЧНИ С ЭТОГО</span><h2>${esc(m.title)}</h2><p>${esc(m.label)} · ${esc(d?.notes||'')}</p></div>${btn('go-recommended',`Открыть учебный маршрут ${svg('arrow',16)}`,'button primary wide')}<button class="text-button" data-act="go-home">Перейти на главную</button></main>`;}
+
+function openWorkbench(kind,origin='lab'){
+  workbenchKind=kind;
+  workbenchFrom=origin;
+  workbenchMessage='';
+  if(!workbench.drafts[kind]){workbench.drafts[kind]=makeDraft(kind);saveWorkbench();}
+  go('workbench');
+}
+function renderWorkbench(){
+  const kind=workbenchKind,python=kind==='python',spec=kind==='spec',draftText=workbench.drafts[kind]||makeDraft(kind);
+  const validation=spec?inspectSpec(draftText):null;
+  return `<main class="view studio workbench-view">
+  <header class="studio-top">${brand()}<button class="mini-btn" data-act="workbench-back" aria-label="Закрыть рабочую среду">${svg('close')}</button></header>
+  <span class="studio-kicker"><i></i> LOOP WORKSPACE / ${python?'PYTHON': 'DOCUMENT'}</span>
+  <h1 class="studio-page-title">Твоя <em>мастерская.</em></h1>
+  <p class="studio-lead">${python?'Пиши настоящий Python и запускай семь тестов прямо на телефоне. Первый запуск требует интернета.':'Создай файл с планом мини-приложения. Никакой командной строки не нужно: просто редактируй документ здесь.'}</p>
+  <div class="wb-tabs"><button class="${!python?'active':''}" data-act="workbench-switch" data-kind="spec">SPEC.md</button><button class="${python?'active':''}" data-act="workbench-switch" data-kind="python">checker.py</button></div>
+  <section class="wb-file"><div class="wb-filebar"><span class="wb-dot"></span><b>${python?'checker.py':spec?'SPEC.md':'notes.md'}</b><span class="wb-saved">● Черновик сохраняется автоматически</span></div>
+  <label class="wb-label" for="wb-editor">${python?'Редактор Python':'Редактор Markdown'}</label>
+  <textarea id="wb-editor" class="wb-editor" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" aria-label="${python?'Код Python':'Файл SPEC.md'}">${esc(draftText)}</textarea></section>
+  <div class="wb-actions">${btn(python?'wb-run':'wb-check',python?'▶ Запустить Python и тесты':'✓ Проверить разделы','button studio-cta')}${btn('wb-download',`↓ Скачать ${python?'checker.py':'SPEC.md'}`,'button outline')}</div>
+  <section class="wb-console" aria-live="polite"><div class="wb-console-head"><span class="wb-terminal-dot"></span><b>${python?'РЕЗУЛЬТАТ ВЫПОЛНЕНИЯ':'ПРОВЕРКА ДОКУМЕНТА'}</b><button data-act="wb-clear" aria-label="Очистить вывод">Очистить</button></div><pre id="wb-output">${esc(workbenchMessage||(python?'Нажми «Запустить», чтобы увидеть вывод программы и 7 тестов.':'Нажми «Проверить разделы». Это не оценка бизнес-идеи, а проверка структуры SPEC.md.'))}</pre></section>
+  ${spec?`<div class="wb-criteria"><h2>Что должно быть в SPEC.md</h2>${validation.steps.map(v=>`<div><span class="${v.done?'ok':''}">${v.done?'✓':'○'}</span>${esc(v.label)}</div>`).join('')}</div>`: `<div class="wb-criteria"><h2>Семь проверок checker.py</h2><p>0.3 · 0.5 · 0.72 · 0.8 · 0.95 · −0.2 · 1.5. Тесты сравнивают реальные возвращаемые значения функции.</p><p>Последний результат: ${workbench.runs.python?.verified?'✓ 7/7 тестов':'не подтверждён тестами'}.</p></div>`}
+  <p class="studio-truth">${python?'Python работает в Web Worker через Pyodide. Это не системный терминал Linux и не сервер: нет pip, Git или доступа к файлам телефона. Внешний движок загружается при первом запуске.':'Текст хранится только в этом браузере. Скачай файл, чтобы сохранить его отдельно. Проверка структуры не означает, что проект уже реализован.'}</p>
+  </main>`;
+}
+function downloadWorkbenchFile(){
+  const kind=workbenchKind,filename=kind==='python'?'checker.py':kind==='spec'?'SPEC.md':'notes.md',body=workbench.drafts[kind]||'';
+  const blob=new Blob([body],{type:'text/plain;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url;a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('Файл скачан: '+filename);
+}
+function setWorkbenchOutput(txt){workbenchMessage=String(txt||'').slice(0,8000);const out=$('#wb-output');if(out)out.textContent=workbenchMessage;}
+function stopWorkbenchWorker(){if(workbenchWorker){workbenchWorker.terminate();workbenchWorker=null;}if(workbenchTimeout){clearTimeout(workbenchTimeout);workbenchTimeout=null;}}
+function runWorkbenchPython(){
+  const src=workbench.drafts.python||'';
+  if(!src.trim()){toast('Введи код в редактор');return;}
+  stopWorkbenchWorker();setWorkbenchOutput('Подготовка Python…');
+  try{
+   const worker=new Worker('./python-worker.mjs',{type:'module'});workbenchWorker=worker;
+   workbenchTimeout=setTimeout(()=>{if(workbenchWorker!==worker)return;stopWorkbenchWorker();setWorkbenchOutput('Выполнение остановлено: превышено 90 секунд. Проверь цикл и интернет-соединение.');},90000);
+   worker.onmessage=({data})=>{
+     if(workbenchWorker!==worker)return;
+     if(data.type==='status'){setWorkbenchOutput(data.message);return;}
+     if(data.type==='ready'){setWorkbenchOutput('Python загружен. Запускаю код и тесты…');return;}
+     if(data.type==='error'){setWorkbenchOutput(data.message);stopWorkbenchWorker();return;}
+     if(data.type==='result'){
+      workbench=markRunResult(workbench,{kind:'python',passed:data.passed,total:data.total,output:data.output});saveWorkbench();
+      setWorkbenchOutput(data.output+(data.passed===7?'\n\n✓ 7/7 тестов. Функция прошла проверку.':'\n\nИсправь код и запусти ещё раз.'));
+      stopWorkbenchWorker();
+     }
+   };
+   worker.onerror=e=>{if(workbenchWorker!==worker)return;setWorkbenchOutput('Ошибка загрузки Python. Проверь интернет или повтори попытку.');stopWorkbenchWorker();};
+   worker.postMessage({type:'run',source:src});
+  }catch(e){setWorkbenchOutput('Запуск недоступен в этом браузере: '+String(e.message||e));stopWorkbenchWorker();}
+}
+function checkWorkbenchSpec(){const r=inspectSpec(workbench.drafts.spec||'');setWorkbenchOutput(r.steps.map(x=>(x.done?'✓ ':'○ ')+x.label).join('\n')+'\n\n'+(r.valid?'Структура заполнена. Проверь смысл и проверяемость критериев перед сдачей.':'Заполни отмеченные разделы своими словами.')+'\n\n'+r.details);}
 function renderLab(){const t=track(),m=findModule(t.id,labModule)||currentModule(),l=LABS[`${t.id}/${m.id}`],saved=coach.labs[`${t.id}/${m.id}`];return `<main class="view lab-v2">${header('Практическая работа',t.name)}<span class="eyebrow">BUILD MODE · ${esc(m.label)}</span><h1 class="h1">Пора<br><em>сделать самому.</em></h1><div class="lab-header"><span class="lab-logo">⌘</span><div><strong>${esc(m.title)}</strong><small>Ориентир: ${l?.estimatedMinutes||25} минут</small></div></div><div class="lab-section"><span class="eyebrow">ТВОЯ ЗАДАЧА</span><p>${esc(l?.task||'Применить тему на практике.')}</p></div><div class="section-header heading-v2"><h2>Критерии готовности</h2></div><div class="check-list">${(l?.checks||[]).map((x,i)=>`<div class="check-item"><span>${String(i+1).padStart(2,'0')}</span>${esc(x)}</div>`).join('')}</div><a href="${esc(l?.source||m.source)}" class="source-link rich-source" target="_blank" rel="noopener noreferrer">${svg('book',19)}<span><b>${esc(l?.sourceName||'Официальный источник')}</b><small>Открыть первоисточник для этой работы ↗</small></span></a>
- <div class="evidence-box"><span class="eyebrow">ЗАПИШИ РЕЗУЛЬТАТ</span><h2>Что ты сделал и как проверил?</h2><p>Напиши, какой файл/ссылку создал, какую команду запустил и что получилось. LOOP пока не исполняет твой код и не проверяет GitHub автоматически.</p><textarea id="lab-note" maxlength="2500" rows="5" placeholder="Например: написал check_answer.py, запустил python check_answer.py, 7 assert прошли без ошибок...">${esc(saved?.note||'')}</textarea><div class="evidence-helper">Минимум 12 символов. Можно сохранить и вернуться позже.</div>${btn('lab-save',saved?'Обновить результат':'Сохранить результат','button primary wide')}<p class="hint">Отметка о выполнении — твой отчёт, не подтверждённый сертификат или автоматическая проверка кода.</p></div>
+ <div class="wb-invitation"><div><span class="studio-kicker"><i></i> РАБОЧАЯ СРЕДА</span><h2>Выполняй прямо здесь.</h2><p>Редактор файлов, настоящая Python-практика и проверки без компьютера.</p></div>${btn('workbench-open','Открыть редактор ↗','button studio-cta wide',`data-kind="${detectDocument(t.id,m.id)}" data-origin="lab"`)}</div><div class="evidence-box"><span class="eyebrow">ЗАПИШИ РЕЗУЛЬТАТ</span><h2>Что ты сделал и как проверил?</h2><p>Напиши, какой файл/ссылку создал, какую команду запустил и что получилось. LOOP пока не исполняет твой код и не проверяет GitHub автоматически.</p><textarea id="lab-note" maxlength="2500" rows="5" placeholder="Например: написал check_answer.py, запустил python check_answer.py, 7 assert прошли без ошибок...">${esc(saved?.note||'')}</textarea><div class="evidence-helper">Минимум 12 символов. Можно сохранить и вернуться позже.</div>${btn('lab-save',saved?'Обновить результат':'Сохранить результат','button primary wide')}<p class="hint">Отметка о выполнении — твой отчёт, не подтверждённый сертификат или автоматическая проверка кода.</p></div>
  ${btn('start','Закрепить тестом · 10 вопросов','button outline wide',`data-mode="level" data-module="${m.id}"`)}
  </main>`;}
 function renderCourses(){return `<main class="view courses-v2">${header('Библиотека')}
@@ -158,8 +218,8 @@ function endRound(timeUp){if(!session)return;clearTimeout(pending);stopClock();c
 function pauseResume(){if(!session)return;session.paused=!session.paused;lastTick=Date.now();activeSave();render()}
 function saveAndQuit(){if(session){session.paused=true;activeSave();resumeAvailable=recoverSession();session=null;}stopClock();modal=null;go('home')}
 function finishOnboarding(){const n=($('#nick')?.value||draft.name).trim();draft.name=n;const p={...draft};if(!validateProfile(p).ok){toast('Введи имя (1–28 символов)');return;}state.profile=p;state.selectedTrack=p.track;save();startAudit()}
-function exportData(){const content=JSON.stringify({mastery,personal,app:'loop-ai',version:1,exportedAt:new Date().toISOString(),state,coach},null,2);const blob=new Blob([content],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='loop-ai-backup.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('Резервная копия скачана')}
-function exitBack(){if(view==='lesson')go('library');else if(view==='settings'||view==='diagnosticResult'||view==='courses')go('home');else if(view==='lab')go('library');else if(view==='game')modal='leave',render();else go('home')}
+function exportData(){const content=JSON.stringify({mastery,personal,workbench,app:'loop-ai',version:1,exportedAt:new Date().toISOString(),state,coach},null,2);const blob=new Blob([content],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='loop-ai-backup.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('Резервная копия скачана')}
+function exitBack(){if(view==='workbench'){stopWorkbenchWorker();go(workbenchFrom==='career'?'career':'lab')}else if(view==='lesson')go('library');else if(view==='settings'||view==='diagnosticResult'||view==='courses')go('home');else if(view==='lab')go('library');else if(view==='game')modal='leave',render();else go('home')}
 /* LOOP STUDIO v3 · views share existing local profile and navigation */
 const MASTERY_KEY='loop-mastery-v3';
 const mkEmpty=()=>({assessment:null,assessmentRuns:0,auditDraft:null,drillHistory:{},drillScores:{},lastDrill:null,drillCount:0,notes:{},clinics:{}});
@@ -247,7 +307,7 @@ function renderCareer(){
  <div class="career-schedule">${plan.map((item,i)=>`<div><span>${String(i+1).padStart(2,'0')}</span><b>${esc(item.name)}</b><strong>${item.minutes} мин</strong></div>`).join('')}</div>
  <div class="studio-section-top"><h2>${allDone?'Повтори и улучши проект':'Твой следующий шаг'}</h2></div>
  <article class="career-current"><div class="career-stage-top"><span>${esc(current.skill)} · ${esc(current.duration)}</span><span>УРОВЕНЬ ПО РЕАЛЬНОЙ ПРАКТИКЕ</span></div><h2>${esc(current.name)}</h2><p>${esc(current.task)}</p><div class="career-result"><b>Что показать в результате</b><span>${esc(current.deliverable)}</span></div><div class="career-checks">${current.checks.map(c=>`<div>◈ &nbsp; ${esc(c)}</div>`).join('')}</div><a class="career-source" href="${esc(current.source)}" target="_blank" rel="noopener noreferrer">Первичный материал · ${esc(current.publisher)} ↗</a>${allDone?'':`<label class="field-label" for="career-proof">После выполнения: файл, команда запуска и результат проверки</label><textarea class="studio-textarea" id="career-proof" rows="5" placeholder="Пример: checker.py — проверил 7 assert; команда python checker.py; вывод без ошибок... (не отмечай заранее)"></textarea><button class="button studio-cta wide" data-act="career-proof">Сохранить свой результат ↗</button><p class="studio-truth">Запись не является независимой проверкой. Реальные тесты и код нужно предъявить и проверить отдельно.</p>`}</article>
- <div class="studio-section-top"><h2>Вся карта компетенций</h2></div>
+ <div class="studio-section-top"><h2>Рабочая среда</h2></div><button class="career-workspace-link" data-act="workbench-open" data-kind="${detectDocument('career',current.id)}" data-origin="career"><span>⌘</span><div><b>Открыть мастерскую</b><small>Пиши код и запускай тесты без компьютера</small></div>↗</button><div class="studio-section-top"><h2>Вся карта компетенций</h2></div>
  <div class="career-steps">${STEPS.map((step,i)=>`<div class="career-step ${p.completed.some(c=>c.id===step.id)?'done':''}"><span>${String(i+1).padStart(2,'0')}</span><div><b>${esc(step.name)}</b><small>${esc(step.deliverable)}</small></div><em>${p.completed.some(c=>c.id===step.id)?'САМООТЧЁТ':'ВПЕРЕДИ'}</em></div>`).join('')}</div>
  <p class="studio-truth">Публикуется только общая программа. Твой выбор и записи хранятся локально на устройстве; используй экспорт в настройках для резервной копии.</p>
  </main>${nav('library')}`;
@@ -266,6 +326,13 @@ function renderStatsStudio(){
 document.addEventListener('click',e=>{const el=e.target.closest('[data-act]');if(!el)return;const act=el.dataset.act,mode=el.dataset.mode,mod=el.dataset.module;switch(act){
 
 case 'career-open':go('career');break;
+case 'workbench-open':openWorkbench(el.dataset.kind||'spec',el.dataset.origin||'lab');break;
+case 'workbench-back':stopWorkbenchWorker();go(workbenchFrom==='career'?'career':'lab');break;
+case 'workbench-switch':stopWorkbenchWorker();workbenchKind=el.dataset.kind==='python'?'python':'spec';workbenchMessage='';if(!workbench.drafts[workbenchKind]){workbench.drafts[workbenchKind]=makeDraft(workbenchKind);saveWorkbench();}render();break;
+case 'wb-check':checkWorkbenchSpec();render();break;
+case 'wb-run':runWorkbenchPython();break;
+case 'wb-download':downloadWorkbenchFile();break;
+case 'wb-clear':setWorkbenchOutput('');break;
 case 'career-focus':personal=normalizePersonal({...personal,focus:el.dataset.value});savePersonal();render();break;
 case 'career-minutes':personal=normalizePersonal({...personal,minutes:Number(el.dataset.value)});savePersonal();render();break;
 case 'career-proof':try{personal=submitEvidence(personal,selectCurrentStep(personal).id,$('#career-proof')?.value||'');savePersonal();toast('Записан самоотчёт. Проверка кода остаётся за тобой.');render();}catch(err){toast(err.message||'Нужно доказательство выполненной работы')}break;
@@ -320,10 +387,10 @@ case 'toggle-motion':state.settings.reduceMotion=!state.settings.reduceMotion;do
 case 'export':exportData();break;
 case 'import':$('#fileImport')?.click();break;
 case 'confirm-reset':modal='reset';render();break;
-case 'reset-yes':localStorage.removeItem(PERSONAL_KEY);personal=normalizePersonal(null);localStorage.removeItem(KEY);localStorage.removeItem(ACTIVE);state=normalizeState(null);onbStep=0;draft={name:'',track:'builder',level:'beginner',minutes:15};coach=normalizeCoach(null);localStorage.removeItem(COACH_KEY);mastery=mkEmpty();saveMastery();session=null;resumeAvailable=null;modal=null;go('onboard');break;
+case 'reset-yes':stopWorkbenchWorker();localStorage.removeItem(WORKBENCH_KEY);workbench=validateWorkbenchState(null);localStorage.removeItem(PERSONAL_KEY);personal=normalizePersonal(null);localStorage.removeItem(KEY);localStorage.removeItem(ACTIVE);state=normalizeState(null);onbStep=0;draft={name:'',track:'builder',level:'beginner',minutes:15};coach=normalizeCoach(null);localStorage.removeItem(COACH_KEY);mastery=mkEmpty();saveMastery();session=null;resumeAvailable=null;modal=null;go('onboard');break;
 }});
-document.addEventListener('change',async e=>{if(e.target.id==='minutes'){state.profile.minutes=Number(e.target.value);save();toast('Настройки сохранены');}if(e.target.id==='fileImport'){try{const f=e.target.files?.[0];if(!f)return;const txt=await f.text();state=parseBackup(txt);try{const data=JSON.parse(txt);coach=normalizeCoach(data.coach);mastery={...mkEmpty(),...(data.mastery||{})};saveMastery();personal=normalizePersonal(data.personal);savePersonal()}catch{coach=normalizeCoach(null)}saveCoach();save();localStorage.removeItem(ACTIVE);resumeAvailable=null;go('home');toast('Прогресс восстановлен');}catch(err){toast(err.message||'Не удалось открыть файл');}}});
-document.addEventListener('input',e=>{if(e.target.id==='nick')draft.name=e.target.value;if(e.target.id==='audit-input'&&audit)audit.value=e.target.value;if(e.target.id==='clinic-note'){mastery.notes[clinicKey]=e.target.value;saveMastery();}});
+document.addEventListener('change',async e=>{if(e.target.id==='minutes'){state.profile.minutes=Number(e.target.value);save();toast('Настройки сохранены');}if(e.target.id==='fileImport'){try{const f=e.target.files?.[0];if(!f)return;const txt=await f.text();state=parseBackup(txt);try{const data=JSON.parse(txt);coach=normalizeCoach(data.coach);mastery={...mkEmpty(),...(data.mastery||{})};saveMastery();personal=normalizePersonal(data.personal);savePersonal();workbench=validateWorkbenchState(data.workbench);saveWorkbench()}catch{coach=normalizeCoach(null)}saveCoach();save();localStorage.removeItem(ACTIVE);resumeAvailable=null;go('home');toast('Прогресс восстановлен');}catch(err){toast(err.message||'Не удалось открыть файл');}}});
+document.addEventListener('input',e=>{if(e.target.id==='nick')draft.name=e.target.value;if(e.target.id==='audit-input'&&audit)audit.value=e.target.value;if(e.target.id==='clinic-note'){mastery.notes[clinicKey]=e.target.value;saveMastery();}if(e.target.id==='wb-editor'){workbench.drafts[workbenchKind]=e.target.value.slice(0,25000);saveWorkbench();}});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&dojo)dojo.paused=true;if(document.hidden&&session&&view==='game'){session.paused=true;activeSave();}else if(!document.hidden&&session&&view==='game'){lastTick=Date.now();render();}});
 document.addEventListener('keydown',e=>{if(view==='game'&&session&&!session.paused&&document.activeElement?.tagName!=='INPUT'){const idx=({1:0,2:1,3:2,a:0,b:1,c:2})[e.key.toLowerCase()];if(idx!==undefined){e.preventDefault();answer(idx)}if(e.key===' '&&session.feedback&&['learn','review'].includes(session.mode)){e.preventDefault();next()}}});
 render();
