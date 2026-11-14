@@ -1,57 +1,30 @@
-# LOOP — AI Gym · v1.0
+# LOOP Academy 2.0
 
-Личное бесплатное мобильное приложение для изучения AI Engineering. Не связано с авторами курсов и не использует их товарные знаки как спонсоров.
+Mobile-first, offline-friendly AI-development learning companion (PWA). Free and open-source style personal training tool.
 
-## Что внутри
+## What is implemented
+- 5 career paths. **AI Developer** has nine staged modules, including safe AI-system security.
+- 14-question formative placement assessment in 7 domains. Scores are tentative and never certify practical ability.
+- Personal focus recommendations, 10-question level rounds, daily warmup, 60-second sprint, mistake review.
+- A task/checklist for each module, linked to **official primary sources**. Marking a lab complete saves a **self-reported result**, not machine-verified code.
+- Source directory with official Python, GitHub, Microsoft, Hugging Face, OpenAI, Google, MCP resources plus an independently authored community course.
+- Offline shell after the first online load; profile, quiz answers, assessment and lab notes stored locally in the browser. No cloud login or sync.
+- Keeps legacy `loop-ai-v1` progress intact; new coaching data is stored separately in `loop-ai-coach-v2`.
+- Export/import in settings includes new coaching data. The first launch after an update may require one normal online reload to refresh cached files.
 
-- **Пять направлений:** AI Engineer, AI Expert, AI Agents, ML Engineer, AI Developer.
-- **Онбординг:** выбор направления, уровня, имени и времени занятий — всё локально, без email и сервера.
-- **15 мини-уроков, 90 тематических и 12 общих заданий:** тексты и вопросы написаны специально для LOOP, а ссылки ведут на оригинальные источники.
-- **Проверка уровня:** 10 вопросов, 3 варианта ответа, 12 секунд на вопрос, 2 остановки времени по 4 секунды; переход на следующий уровень от 8/10.
-- **Дневная практика:** 6 вопросов из текущей темы, повторения прошлых ошибок и общих знаний.
-- **Блиц:** 60 секунд, быстрые ответы.
-- **Обучение:** без таймера, с объяснениями каждого ответа.
-- **Повторение ошибок:** неправильные ответы сохраняются до успешной повторной проверки.
-- **Прогресс:** XP, серия дней, точность, лучший результат по модулю, история, экспорт/импорт JSON.
-- **Офлайн PWA:** кэширование страниц после первого открытия на HTTPS. Никакой рекламы, подписок или трекинга.
+## Deployment
+Push `index.html`, `style.css`, `app.mjs`, `engine.mjs`, `content.mjs`, `coach.mjs`, `manifest.webmanifest`, `sw.js`, `icon.svg` and `assets/` to the root of a public GitHub repository. GitHub Pages: Settings → Pages → Deploy from main/root. Install in Chrome → menu → Add to home screen. API calls are NOT made by this app.
 
-> Это первая работающая версия: короткие уроки и проверка знаний. Полный курс из 542 уроков не скопирован и не встроен; для углубления открываются ссылки на первоисточники. Здесь нет живого AI-преподавателя, серверных аккаунтов или синхронизации между телефонами.
-
-## Запуск на компьютере
-
-```sh
-python -m http.server 8080
+## Tests
 ```
-
-Открыть http://localhost:8080. Папка проекта должна быть корнем сервера. Или открыть файл `loop-ai-standalone.html` напрямую для тестирования без сервера (у локальных `file:` URL есть ограничения сохранения данных на некоторых мобильных браузерах).
-
-## Бесплатная установка на Xiaomi / Android
-
-1. Загрузить содержимое этого архива в репозиторий GitHub.
-2. Settings → Pages → Deploy from branch → `main` / `(root)`.
-3. Открыть HTTPS-ссылку в Chrome на Android.
-4. В меню Chrome выбрать «Установить приложение» или «Добавить на главный экран».
-5. После первой загрузки приложение работает офлайн. Данные хранятся на устройстве и не синхронизируются с GitHub.
-
-## Тестирование
-
-```sh
-node --test tests/*.test.mjs
+npm test
+npm run build
+python tests/v2_smoke.py
 ```
+The Playwright smoke test uses a standalone build through `page.set_content` to work in restricted environments; it verifies UI workflows. It does NOT simulate production HTTPS/service-worker install and must not be presented as physical Android testing.
 
-Для локальных тестов нужен Node.js 22+; для использования приложения Node.js не нужен.
+## Honest scope
+This app is not affiliated with the authors of linked courses, does not mirror or replace their full lessons and does not issue their certificates. Advanced external API exercises may have provider usage costs. The quiz bank and procedural variations can be reused indefinitely; new theoretical subjects are finite until further content updates. Progress is not synced across devices unless the user exports/imports a backup.
 
-## Использованные обучающие источники (вопросы авторские)
-
-- [AI Engineering From Scratch](https://github.com/rohitg00/ai-engineering-from-scratch) — Python, LLM Engineering, RAG, Agent Engineering, тестирование.
-- [Microsoft Generative AI for Beginners](https://github.com/microsoft/generative-ai-for-beginners) — языковые модели, промптинг, API и ответственное использование.
-- [Hugging Face Agents Course](https://huggingface.co/learn/agents-course/unit1/introduction) — agent loop, инструменты, агенты.
-- [Google Machine Learning Crash Course](https://developers.google.com/machine-learning/crash-course) — классификация, данные, метрики.
-
-## Дизайн-ориентиры
-
-На основе предоставленного пользователем видео: тёмная UI, минималистичная задача, 3 ответа, короткий таймер, уровни, накопление прогресса. Заимствования кода/графики из чужого приложения нет.
-
-## Конфиденциальность
-
-Профиль, история и ответы сохраняются в `localStorage` браузера. Регистрация на сервере отсутствует. Для переноса между устройствами — «Настройки → Сохранить прогресс», затем «Восстановить». На чужом устройстве нельзя восстанавливать приватные данные без доверия к браузеру.
+## Sources
+See `coach.mjs` (`OFFICIAL_COURSES`) for direct links and `RESEARCH.md` for the project sourcing rationale. Topics include defensive prompt-injection and boundary testing; nothing in the app requires bypassing access controls or unsafe behavior.

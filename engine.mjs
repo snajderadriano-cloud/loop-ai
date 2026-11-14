@@ -14,8 +14,8 @@ function withShuffledOptions(list){return list.map(q=>restoreQuestion(q.id,shuff
 export function buildRound({track,module,mode,state=INITIAL_STATE}){
  const pool=getQuestionsForModule(track,module);
  if(!findTrack(track)||!pool.length)return [];
- if(mode==='level')return withShuffledOptions(uniqueQuestions([...shuffle(pool),...shuffle(QUESTION_BANK.filter(q=>q.track==='core')).slice(0,4)]));
- if(mode==='learn')return withShuffledOptions(shuffle(pool));
+ if(mode==='level')return withShuffledOptions(uniqueQuestions([...shuffle(pool).slice(0,6),...shuffle(QUESTION_BANK.filter(q=>q.track==='core')).slice(0,4)]));
+ if(mode==='learn')return withShuffledOptions(shuffle(pool).slice(0,10));
  if(mode==='review')return withShuffledOptions(shuffle(pickNextReview(state,track)).slice(0,10));
  const wrongs=pickNextReview(state,track);
  const core=QUESTION_BANK.filter(q=>q.track==='core');
