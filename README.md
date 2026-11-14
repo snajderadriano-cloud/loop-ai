@@ -56,3 +56,9 @@ The dedicated career route offers eight outcomes mapped to Python, GitHub Skills
 - Python lessons open an in-browser `checker.py` editor with **real Python execution via Pyodide 0.27.7**, in a dedicated Web Worker, capture of stdout/stderr and seven real assertion cases. The first run loads WebAssembly from the Pyodide CDN; Python execution requires network on first run and is not guaranteed offline. This is not an operating-system shell, a secure execution service, or a full `pip` environment.
 - User code runs on their device. No paid API, backend, login, remote user data, or shared terminal is added. Execution is cancellable on a 90-second timeout. Don't run untrusted code. Code and drafts persist locally and are included in Export/Import.
 - UX test: `python tests/workbench_smoke.py`; logic: `node --test tests/workbench.test.mjs`.
+
+## Workspace usability v5
+- Guided SPEC.md form: title/goal/scenarios/constraints/acceptance checks, with source Markdown mode as an alternative. Both edit the same draft and retain previous user content.
+- Mobile Python editor: large code field, quick syntax/indent keys, distinct Run and Check actions, actual Pyodide running in a worker. A successful print does not certify exercise tests.
+- Browser worker is reused while on the editor screen to avoid downloading Python on every run. It is not an OS terminal or cloud code execution.
+- PWA installation: old Android shortcut pointing at `loopai.com` is independent of this repo; uninstall/remove old shortcut and then install from the correct `github.io/loop-ai/` origin in normal Chrome. Export progress before uninstalling the PWA.

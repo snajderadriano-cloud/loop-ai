@@ -1,1 +1,10 @@
-{"name":"loop-academy","version":"4.0.0","type":"module","private":true,"scripts":{"test":"node --test tests/*.test.mjs","build":"node build.mjs"}}
+{
+  "name": "loop-academy",
+  "version": "5.0.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "build": "node build.mjs"
+  }
+}

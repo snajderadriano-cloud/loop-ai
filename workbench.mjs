@@ -29,3 +29,21 @@ export function inspectSpec(text){
 }
 export function validateWorkbenchState(value){const x=value&&typeof value==='object'?value:{};const drafts={};for(const k of ['spec','python','notes'])if(typeof x.drafts?.[k]==='string')drafts[k]=x.drafts[k].slice(0,MAX_FILE_LENGTH);const runs={};for(const k of ['python']){const r=x.runs?.[k];if(r&&typeof r==='object'){const passed=Math.max(0,Math.min(7,Number(r.passed)||0)),total=7;runs[k]={passed,total,verified:passed===total&&r.verified===true,at:typeof r.at==='string'?r.at:'',output:String(r.output||'').slice(0,5000)};}}return {drafts,runs};}
 export function markRunResult(state,{passed,total,output,kind='python'}){const s=validateWorkbenchState(state);if(kind!=='python')return s;const n=Math.max(0,Math.min(7,Number(passed)||0));return {...s,runs:{...s.runs,python:{passed:n,total:7,verified:n===7&&total===7,at:new Date().toISOString(),output:String(output||'').slice(0,5000)}}};}
+
+// A mobile-friendly form that converts directly to the same SPEC.md draft.
+// Keep the markdown draft as the single source of truth across both editor modes.
+export function splitSpecDraft(source){
+ const text=String(source||'');
+ const title=(text.match(/^#\s+(.+)$/m)||[])[1]||'Мой AI-проект';
+ const part=heading=>{
+  const match=text.match(new RegExp('^##\\s+'+heading+'\\s*$', 'm'));
+  if(!match)return '';
+  const after=text.slice(match.index+match[0].length);
+  return after.split(/^##\s+/m)[0].trim();
+ };
+ return {title,goal:part('Цель'),scenarios:part('Сценарии'),constraints:part('Ограничения'),criteria:part('Критерии приёмки')};
+}
+export function joinSpecDraft(fields){
+ const cleanField=k=>String(fields?.[k]||'').replace(/\r/g,'').trim();
+ return '# '+cleanField('title')+'\n\n## Цель\n'+cleanField('goal')+'\n\n## Сценарии\n'+cleanField('scenarios')+'\n\n## Ограничения\n'+cleanField('constraints')+'\n\n## Критерии приёмки\n'+cleanField('criteria')+'\n';
+}

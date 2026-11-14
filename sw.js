@@ -1,4 +1,4 @@
-const CACHE='loop-workbench-v4-20261114';
+const CACHE='loop-workbench-v5-20261114';
 const ASSETS=['./','./index.html','./style.css','./studio.css','./app.mjs','./engine.mjs','./content.mjs','./coach.mjs','./mastery.mjs','./personal.mjs','./workbench.mjs','./python-worker.mjs','./manifest.webmanifest','./assets/icon-192.png','./assets/icon-512.png','./icon.svg'];
 self.addEventListener('install', event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting())));
 self.addEventListener('activate', event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim())));

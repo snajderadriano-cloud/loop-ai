@@ -3,7 +3,7 @@ import {INITIAL_STATE,validateProfile,normalizeState,buildRound,gradeRound,updat
 import {OFFICIAL_COURSES,SKILLS,DIAGNOSTIC,LABS,DEVELOPER_PATH,analyzePlacement,normalizeCoach,applyPracticeEvidence,hasPracticeEvidence,updateSkillSignals,recommendNext} from './coach.mjs';
 import {PROBES,DOMAINS,buildAssessment,gradeAttempt,analyzeAssessment,scheduleReview,selectDailyDrill,MODULE_GUIDES,PROMPT_CLINIC,SOURCED_PROGRAMS} from './mastery.mjs';
 import {STEPS,FOCUSES,normalizePersonal,selectCurrentStep,submitEvidence,makeDailyPlan} from './personal.mjs';
-import {WORKBENCH_KEY,makeDraft,detectDocument,inspectSpec,validateWorkbenchState,markRunResult} from './workbench.mjs';
+import {WORKBENCH_KEY,makeDraft,detectDocument,inspectSpec,validateWorkbenchState,markRunResult,splitSpecDraft,joinSpecDraft} from './workbench.mjs';
 const KEY='loop-ai-v1';const ACTIVE='loop-ai-active-v1';const COACH_KEY='loop-ai-coach-v2';const PERSONAL_KEY='loop-personal-v1';
 const $=s=>document.querySelector(s);const app=document.getElementById('app');
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -17,7 +17,7 @@ let personal;try{personal=normalizePersonal(JSON.parse(localStorage.getItem(PERS
 function savePersonal(){try{localStorage.setItem(PERSONAL_KEY,JSON.stringify(personal))}catch{}}
 let workbench;try{workbench=validateWorkbenchState(JSON.parse(localStorage.getItem(WORKBENCH_KEY)||'null'));}catch{workbench=validateWorkbenchState(null)}
 function saveWorkbench(){try{localStorage.setItem(WORKBENCH_KEY,JSON.stringify(workbench))}catch{}}
-let workbenchKind='spec', workbenchFrom='lab', workbenchMessage='', workbenchWorker=null, workbenchTimeout=null;
+let workbenchKind='spec', workbenchFrom='lab', workbenchMessage='', workbenchWorker=null, workbenchTimeout=null, workbenchBusy=false, workbenchSpecMode='guided';
 let view=state.profile?'home':'onboard';let onbStep=0;let draft={name:'',track:'builder',level:'beginner',minutes:15};let assessment=null,labModule=null,lessonModule=null;
 let selectedMod=null;let session=null;let lastResult=null;let modal=null;let interval=null;let pending=null;let lastTick=Date.now();let toastTimeout=null;
 function save(){try{localStorage.setItem(KEY,JSON.stringify(state))}catch{}};
@@ -138,19 +138,27 @@ function openWorkbench(kind,origin='lab'){
 function renderWorkbench(){
   const kind=workbenchKind,python=kind==='python',spec=kind==='spec',draftText=workbench.drafts[kind]||makeDraft(kind);
   const validation=spec?inspectSpec(draftText):null;
+  const fields=spec?(draftText===makeDraft('spec')?{title:'',goal:'',scenarios:'',constraints:'',criteria:''}:splitSpecDraft(draftText)):null;
+  const formField=(id,label,description,placeholder,rows=3)=>`<label class="wb-guided-field"><span>${label}</span><small>${description}</small><textarea data-spec-field="${id}" rows="${rows}" placeholder="${esc(placeholder)}">${esc(fields[id])}</textarea></label>`;
   return `<main class="view studio workbench-view">
-  <header class="studio-top">${brand()}<button class="mini-btn" data-act="workbench-back" aria-label="Закрыть рабочую среду">${svg('close')}</button></header>
-  <span class="studio-kicker"><i></i> LOOP WORKSPACE / ${python?'PYTHON': 'DOCUMENT'}</span>
-  <h1 class="studio-page-title">Твоя <em>мастерская.</em></h1>
-  <p class="studio-lead">${python?'Пиши настоящий Python и запускай семь тестов прямо на телефоне. Первый запуск требует интернета.':'Создай файл с планом мини-приложения. Никакой командной строки не нужно: просто редактируй документ здесь.'}</p>
-  <div class="wb-tabs"><button class="${!python?'active':''}" data-act="workbench-switch" data-kind="spec">SPEC.md</button><button class="${python?'active':''}" data-act="workbench-switch" data-kind="python">checker.py</button></div>
-  <section class="wb-file"><div class="wb-filebar"><span class="wb-dot"></span><b>${python?'checker.py':spec?'SPEC.md':'notes.md'}</b><span class="wb-saved">● Черновик сохраняется автоматически</span></div>
-  <label class="wb-label" for="wb-editor">${python?'Редактор Python':'Редактор Markdown'}</label>
-  <textarea id="wb-editor" class="wb-editor" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" aria-label="${python?'Код Python':'Файл SPEC.md'}">${esc(draftText)}</textarea></section>
-  <div class="wb-actions">${btn(python?'wb-run':'wb-check',python?'▶ Запустить Python и тесты':'✓ Проверить разделы','button studio-cta')}${btn('wb-download',`↓ Скачать ${python?'checker.py':'SPEC.md'}`,'button outline')}</div>
-  <section class="wb-console" aria-live="polite"><div class="wb-console-head"><span class="wb-terminal-dot"></span><b>${python?'РЕЗУЛЬТАТ ВЫПОЛНЕНИЯ':'ПРОВЕРКА ДОКУМЕНТА'}</b><button data-act="wb-clear" aria-label="Очистить вывод">Очистить</button></div><pre id="wb-output">${esc(workbenchMessage||(python?'Нажми «Запустить», чтобы увидеть вывод программы и 7 тестов.':'Нажми «Проверить разделы». Это не оценка бизнес-идеи, а проверка структуры SPEC.md.'))}</pre></section>
-  ${spec?`<div class="wb-criteria"><h2>Что должно быть в SPEC.md</h2>${validation.steps.map(v=>`<div><span class="${v.done?'ok':''}">${v.done?'✓':'○'}</span>${esc(v.label)}</div>`).join('')}</div>`: `<div class="wb-criteria"><h2>Семь проверок checker.py</h2><p>0.3 · 0.5 · 0.72 · 0.8 · 0.95 · −0.2 · 1.5. Тесты сравнивают реальные возвращаемые значения функции.</p><p>Последний результат: ${workbench.runs.python?.verified?'✓ 7/7 тестов':'не подтверждён тестами'}.</p></div>`}
-  <p class="studio-truth">${python?'Python работает в Web Worker через Pyodide. Это не системный терминал Linux и не сервер: нет pip, Git или доступа к файлам телефона. Внешний движок загружается при первом запуске.':'Текст хранится только в этом браузере. Скачай файл, чтобы сохранить его отдельно. Проверка структуры не означает, что проект уже реализован.'}</p>
+  <header class="wb-topbar"><button class="wb-back" data-act="workbench-back" aria-label="Вернуться к заданию">← Назад</button><div><b>LOOP WORKSPACE</b><small>Локально · автосохранение</small></div><span class="wb-live-dot" aria-hidden="true"></span></header>
+  <div class="wb-heading"><div><span class="studio-kicker"><i></i> УЧИСЬ И СОЗДАВАЙ</span><h1>${python?'Python-практика':'Создаём SPEC.md'}</h1><p>${python?'Настоящий Python в телефоне. Запускай любые короткие программы или проверь задание отдельно.':'Ответь на четыре вопроса. Файл SPEC.md соберётся автоматически — без Markdown-команд.'}</p></div></div>
+  <div class="wb-tabs" role="tablist" aria-label="Файлы проекта"><button role="tab" aria-selected="${!python}" class="${!python?'active':''}" data-act="workbench-switch" data-kind="spec">▤ SPEC.md</button><button role="tab" aria-selected="${python}" class="${python?'active':''}" data-act="workbench-switch" data-kind="python">⌘ checker.py</button></div>
+  ${spec?`<div class="wb-mode"><button data-act="wb-spec-mode" data-mode="guided" class="${workbenchSpecMode==='guided'?'active':''}">По шагам</button><button data-act="wb-spec-mode" data-mode="source" class="${workbenchSpecMode==='source'?'active':''}">Markdown</button></div>`:''}
+  ${spec&&workbenchSpecMode==='guided'?`<section class="wb-guided" aria-label="Мастер технического задания">
+    ${formField('title','Название','Короткое рабочее название','AI-помощник для заметок',1)}
+    ${formField('goal','01 · Цель','Для кого приложение, какая проблема и что оно делает?','Приложение помогает студентам быстро находить точные ответы в своих заметках, показывая источник.')}
+    ${formField('scenarios','02 · Три сценария','По одному действию пользователя на строку. Начинай каждую строку с 1., 2., 3.','1. Пользователь добавляет документ и видит его название.\n2. Пользователь вводит вопрос и получает ответ с цитатой.\n3. Если данных нет, приложение честно сообщает об этом.',5)}
+    ${formField('constraints','03 · Ограничения','Укажи минимум два ограничения: время, безопасность, бюджет и т. п.','- Работает на телефоне без регистрации.\n- Не отправляет личные файлы без разрешения.',3)}
+    ${formField('criteria','04 · Проверка результата','Четыре действия вида «если сделать X, получится Y».','1. При добавлении файла появляется карточка документа.\n2. При запросе по загруженному тексту показывается цитата.\n3. При отсутствии ответа приложение не выдумывает его.\n4. После обновления страницы список файлов остаётся.',6)}
+   </section>`:`<section class="wb-file"><div class="wb-filebar"><span class="wb-dot"></span><b>${python?'checker.py':'SPEC.md'}</b><span class="wb-saved">● Сохраняется автоматически</span></div>
+   ${python?`<div class="wb-code-hint">Начни с <code>def check_answer(score):</code> · отступы в Python обязательны.</div>`:''}
+   <div class="wb-keybar" aria-label="Быстрые клавиши">${(python?[['⇥','    ','Отступ (4 пробела)'],['⇤','outdent','Убрать отступ'],[':',' :','Двоеточие'],['(', '(', 'Открыть скобку'],[')',')','Закрыть скобку'],['=','=','Равно'],['↶','undo','Отменить']]:[['# ','# ','Заголовок'],['- ','- ','Список'],['↶','undo','Отменить']]).map(([label,value,desc])=>`<button type="button" data-act="wb-key" data-value="${esc(value)}" aria-label="${esc(desc)}">${esc(label)}</button>`).join('')}</div>
+   <label class="wb-label" for="wb-editor">${python?'КОД · PYTHON':'ТЕКСТ · MARKDOWN'}</label><textarea id="wb-editor" class="wb-editor" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" aria-label="${python?'Код Python':'Файл SPEC.md'}" enterkeyhint="enter">${esc(draftText)}</textarea></section>`}
+  <div class="wb-actions" aria-label="Действия с файлом">${python?`<button class="button studio-cta" data-act="wb-run">▶ Запустить код</button><button class="button outline" data-act="wb-test">✓ Проверить 7 тестами</button>`:btn('wb-check','✓ Проверить документ','button studio-cta')}${btn('wb-download',`↓ Скачать ${python?'checker.py':'SPEC.md'}`,'button outline')}</div>
+  <section class="wb-console" aria-live="polite"><div class="wb-console-head"><span class="wb-terminal-dot"></span><b>${python?'КОНСОЛЬ PYTHON':'ПРОВЕРКА SPEC.md'}</b><button data-act="wb-clear" aria-label="Очистить вывод">Очистить</button></div><pre id="wb-output">${esc(workbenchMessage||(python?'Результат появится здесь после запуска. Проверка задания — отдельная кнопка.':'Заполни поля и нажми «Проверить документ». Содержание оцениваешь ты, здесь проверяется структура.'))}</pre></section>
+  ${spec?`<div class="wb-criteria" id="wb-spec-criteria"><h2>Готовность документа</h2>${validation.steps.map(v=>`<div><span class="${v.done?'ok':''}">${v.done?'✓':'○'}</span>${esc(v.label)}</div>`).join('')}</div>`:`<div class="wb-criteria"><h2>Проверка задания Python</h2><p>Семь значений: 0.3 · 0.5 · 0.72 · 0.8 · 0.95 · −0.2 · 1.5. Проверка сравнивает возвращаемые значения, а не текст print.</p><p>Результат: ${workbench.runs.python?.verified?'✓ 7/7 тестов':'пока нет подтверждённых тестов'}.</p></div>`}
+  <p class="studio-truth">${python?'Код выполняется внутри Web Worker через Pyodide. Первый запуск требует интернета. Это не серверный терминал, Git и системные команды недоступны.':'Черновик сохраняется в браузере; скачай SPEC.md для резервной копии. Проверка разделов не подтверждает качество идеи.'}</p>
   </main>`;
 }
 function downloadWorkbenchFile(){
@@ -159,32 +167,61 @@ function downloadWorkbenchFile(){
   a.href=url;a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('Файл скачан: '+filename);
 }
 function setWorkbenchOutput(txt){workbenchMessage=String(txt||'').slice(0,8000);const out=$('#wb-output');if(out)out.textContent=workbenchMessage;}
-function stopWorkbenchWorker(){if(workbenchWorker){workbenchWorker.terminate();workbenchWorker=null;}if(workbenchTimeout){clearTimeout(workbenchTimeout);workbenchTimeout=null;}}
-function runWorkbenchPython(){
-  const src=workbench.drafts.python||'';
-  if(!src.trim()){toast('Введи код в редактор');return;}
-  stopWorkbenchWorker();setWorkbenchOutput('Подготовка Python…');
-  try{
-   const worker=new Worker('./python-worker.mjs',{type:'module'});workbenchWorker=worker;
-   workbenchTimeout=setTimeout(()=>{if(workbenchWorker!==worker)return;stopWorkbenchWorker();setWorkbenchOutput('Выполнение остановлено: превышено 90 секунд. Проверь цикл и интернет-соединение.');},90000);
+function setWorkbenchBusy(busy){workbenchBusy=busy;document.querySelectorAll('[data-act="wb-run"],[data-act="wb-test"]').forEach(x=>{x.disabled=busy;x.setAttribute('aria-busy',busy?'true':'false')});}
+function stopWorkbenchWorker(){if(workbenchWorker){workbenchWorker.terminate();workbenchWorker=null;}if(workbenchTimeout){clearTimeout(workbenchTimeout);workbenchTimeout=null;}setWorkbenchBusy(false);}
+function runWorkbenchPython(verify=false){
+ const src=workbench.drafts.python||'';
+ if(!src.trim()){toast('Введи код в редактор');return;}
+ if(workbenchBusy){toast('Python ещё выполняется');return;}
+ const hadWorker=!!workbenchWorker;
+ setWorkbenchBusy(true);setWorkbenchOutput(hadWorker?'Запускаю программу…':'Подготовка Python…');
+ try{
+   const worker=workbenchWorker||new Worker('./python-worker.mjs',{type:'module'});
+   workbenchWorker=worker;
+   workbenchTimeout=setTimeout(()=>{if(workbenchWorker!==worker)return;stopWorkbenchWorker();setWorkbenchOutput('Выполнение остановлено через 90 секунд. Проверь цикл или интернет.');},90000);
    worker.onmessage=({data})=>{
      if(workbenchWorker!==worker)return;
      if(data.type==='status'){setWorkbenchOutput(data.message);return;}
-     if(data.type==='ready'){setWorkbenchOutput('Python загружен. Запускаю код и тесты…');return;}
+     if(data.type==='ready'){setWorkbenchOutput(verify?'Python загружен. Проверяю программу…':'Python загружен. Выполняю код…');return;}
      if(data.type==='error'){setWorkbenchOutput(data.message);stopWorkbenchWorker();return;}
      if(data.type==='result'){
-      workbench=markRunResult(workbench,{kind:'python',passed:data.passed,total:data.total,output:data.output});saveWorkbench();
-      setWorkbenchOutput(data.output+(data.passed===7?'\n\n✓ 7/7 тестов. Функция прошла проверку.':'\n\nИсправь код и запусти ещё раз.'));
-      stopWorkbenchWorker();
+       if(verify&&!data.error){workbench=markRunResult(workbench,{kind:'python',passed:data.passed,total:data.total,output:data.output});saveWorkbench();}
+       const suffix=verify?(data.error?'\n\nСначала исправь ошибку Python.':data.passed===7?'\n\n✓ 7/7 тестов пройдены.':'\n\nЧасть тестов не пройдена. Исправь код и попробуй снова.'):'\n\nВыполнение завершено. Для проверки задания нажми «Проверить 7 тестами». ';
+       setWorkbenchOutput(data.output+suffix);
+       if(workbenchTimeout){clearTimeout(workbenchTimeout);workbenchTimeout=null;}
+       setWorkbenchBusy(false);
+       $('#wb-output')?.scrollIntoView({block:'nearest',behavior:state.settings?.reduceMotion?'auto':'smooth'});
      }
    };
-   worker.onerror=e=>{if(workbenchWorker!==worker)return;setWorkbenchOutput('Ошибка загрузки Python. Проверь интернет или повтори попытку.');stopWorkbenchWorker();};
-   worker.postMessage({type:'run',source:src});
-  }catch(e){setWorkbenchOutput('Запуск недоступен в этом браузере: '+String(e.message||e));stopWorkbenchWorker();}
+   worker.onerror=()=>{if(workbenchWorker!==worker)return;setWorkbenchOutput('Ошибка загрузки Python. Проверь интернет и повтори попытку.');stopWorkbenchWorker();};
+   worker.postMessage({type:'run',source:src,verify});
+ }catch(e){setWorkbenchOutput('Запуск недоступен в этом браузере: '+String(e.message||e));stopWorkbenchWorker();}
+}
+function editWorkbenchAtCursor(value){
+ const el=$('#wb-editor');if(!el)return;
+ el.focus();
+ if(value==='undo'){document.execCommand?.('undo');el.dispatchEvent(new Event('input',{bubbles:true}));return;}
+ const start=el.selectionStart,end=el.selectionEnd;
+ if(value==='outdent'){
+   const text=el.value;
+   const startLine=text.lastIndexOf('\n',start-1)+1;
+   const before=text.slice(startLine,start);const n=Math.min(4,(before.match(/^ */)||[''])[0].length);
+   if(n){el.setRangeText('',startLine,startLine+n,'preserve');el.setSelectionRange(Math.max(startLine,start-n),Math.max(startLine,end-n));}
+ }else{
+   el.setRangeText(value,start,end,'end');
+ }
+ el.dispatchEvent(new Event('input',{bubbles:true}));
+}
+function updateSpecForm(){
+ const fields=splitSpecDraft(workbench.drafts.spec||makeDraft('spec'));
+ document.querySelectorAll('[data-spec-field]').forEach(x=>{fields[x.dataset.specField]=x.value});
+ workbench.drafts.spec=joinSpecDraft(fields).slice(0,25000);saveWorkbench();
+ const v=inspectSpec(workbench.drafts.spec);
+ const c=$('#wb-spec-criteria');if(c)c.innerHTML='<h2>Готовность документа</h2>'+v.steps.map(x=>`<div><span class="${x.done?'ok':''}">${x.done?'✓':'○'}</span>${esc(x.label)}</div>`).join('');
 }
 function checkWorkbenchSpec(){const r=inspectSpec(workbench.drafts.spec||'');setWorkbenchOutput(r.steps.map(x=>(x.done?'✓ ':'○ ')+x.label).join('\n')+'\n\n'+(r.valid?'Структура заполнена. Проверь смысл и проверяемость критериев перед сдачей.':'Заполни отмеченные разделы своими словами.')+'\n\n'+r.details);}
 function renderLab(){const t=track(),m=findModule(t.id,labModule)||currentModule(),l=LABS[`${t.id}/${m.id}`],saved=coach.labs[`${t.id}/${m.id}`];return `<main class="view lab-v2">${header('Практическая работа',t.name)}<span class="eyebrow">BUILD MODE · ${esc(m.label)}</span><h1 class="h1">Пора<br><em>сделать самому.</em></h1><div class="lab-header"><span class="lab-logo">⌘</span><div><strong>${esc(m.title)}</strong><small>Ориентир: ${l?.estimatedMinutes||25} минут</small></div></div><div class="lab-section"><span class="eyebrow">ТВОЯ ЗАДАЧА</span><p>${esc(l?.task||'Применить тему на практике.')}</p></div><div class="section-header heading-v2"><h2>Критерии готовности</h2></div><div class="check-list">${(l?.checks||[]).map((x,i)=>`<div class="check-item"><span>${String(i+1).padStart(2,'0')}</span>${esc(x)}</div>`).join('')}</div><a href="${esc(l?.source||m.source)}" class="source-link rich-source" target="_blank" rel="noopener noreferrer">${svg('book',19)}<span><b>${esc(l?.sourceName||'Официальный источник')}</b><small>Открыть первоисточник для этой работы ↗</small></span></a>
- <div class="wb-invitation"><div><span class="studio-kicker"><i></i> РАБОЧАЯ СРЕДА</span><h2>Выполняй прямо здесь.</h2><p>Редактор файлов, настоящая Python-практика и проверки без компьютера.</p></div>${btn('workbench-open','Открыть редактор ↗','button studio-cta wide',`data-kind="${detectDocument(t.id,m.id)}" data-origin="lab"`)}</div><div class="evidence-box"><span class="eyebrow">ЗАПИШИ РЕЗУЛЬТАТ</span><h2>Что ты сделал и как проверил?</h2><p>Напиши, какой файл/ссылку создал, какую команду запустил и что получилось. LOOP пока не исполняет твой код и не проверяет GitHub автоматически.</p><textarea id="lab-note" maxlength="2500" rows="5" placeholder="Например: написал check_answer.py, запустил python check_answer.py, 7 assert прошли без ошибок...">${esc(saved?.note||'')}</textarea><div class="evidence-helper">Минимум 12 символов. Можно сохранить и вернуться позже.</div>${btn('lab-save',saved?'Обновить результат':'Сохранить результат','button primary wide')}<p class="hint">Отметка о выполнении — твой отчёт, не подтверждённый сертификат или автоматическая проверка кода.</p></div>
+ <div class="wb-invitation"><div><span class="studio-kicker"><i></i> РАБОЧАЯ СРЕДА</span><h2>Практика прямо в LOOP.</h2><p>Форма ТЗ без разметки, редактор Python, отдельные запуск и проверка тестами.</p></div>${btn('workbench-open','Открыть редактор ↗','button studio-cta wide',`data-kind="${detectDocument(t.id,m.id)}" data-origin="lab"`)}</div><div class="evidence-box"><span class="eyebrow">ЗАПИШИ РЕЗУЛЬТАТ</span><h2>Что ты сделал и как проверил?</h2><p>Напиши, какой файл/ссылку создал, какую команду запустил и что получилось. LOOP запускает небольшой Python-код в браузере и проверяет 7 тестов для упражнения. GitHub и другие проекты автоматически не проверяются.</p><textarea id="lab-note" maxlength="2500" rows="5" placeholder="Например: написал check_answer.py, запустил python check_answer.py, 7 assert прошли без ошибок...">${esc(saved?.note||'')}</textarea><div class="evidence-helper">Минимум 12 символов. Можно сохранить и вернуться позже.</div>${btn('lab-save',saved?'Обновить результат':'Сохранить результат','button primary wide')}<p class="hint">Отметка о выполнении — твой отчёт, не подтверждённый сертификат или автоматическая проверка кода.</p></div>
  ${btn('start','Закрепить тестом · 10 вопросов','button outline wide',`data-mode="level" data-module="${m.id}"`)}
  </main>`;}
 function renderCourses(){return `<main class="view courses-v2">${header('Библиотека')}
@@ -329,8 +366,11 @@ case 'career-open':go('career');break;
 case 'workbench-open':openWorkbench(el.dataset.kind||'spec',el.dataset.origin||'lab');break;
 case 'workbench-back':stopWorkbenchWorker();go(workbenchFrom==='career'?'career':'lab');break;
 case 'workbench-switch':stopWorkbenchWorker();workbenchKind=el.dataset.kind==='python'?'python':'spec';workbenchMessage='';if(!workbench.drafts[workbenchKind]){workbench.drafts[workbenchKind]=makeDraft(workbenchKind);saveWorkbench();}render();break;
-case 'wb-check':checkWorkbenchSpec();render();break;
-case 'wb-run':runWorkbenchPython();break;
+case 'wb-check':checkWorkbenchSpec();break;
+case 'wb-run':runWorkbenchPython(false);break;
+case 'wb-test':runWorkbenchPython(true);break;
+case 'wb-key':editWorkbenchAtCursor(el.dataset.value||'');break;
+case 'wb-spec-mode':workbenchSpecMode=el.dataset.mode==='source'?'source':'guided';render();break;
 case 'wb-download':downloadWorkbenchFile();break;
 case 'wb-clear':setWorkbenchOutput('');break;
 case 'career-focus':personal=normalizePersonal({...personal,focus:el.dataset.value});savePersonal();render();break;
@@ -390,7 +430,7 @@ case 'confirm-reset':modal='reset';render();break;
 case 'reset-yes':stopWorkbenchWorker();localStorage.removeItem(WORKBENCH_KEY);workbench=validateWorkbenchState(null);localStorage.removeItem(PERSONAL_KEY);personal=normalizePersonal(null);localStorage.removeItem(KEY);localStorage.removeItem(ACTIVE);state=normalizeState(null);onbStep=0;draft={name:'',track:'builder',level:'beginner',minutes:15};coach=normalizeCoach(null);localStorage.removeItem(COACH_KEY);mastery=mkEmpty();saveMastery();session=null;resumeAvailable=null;modal=null;go('onboard');break;
 }});
 document.addEventListener('change',async e=>{if(e.target.id==='minutes'){state.profile.minutes=Number(e.target.value);save();toast('Настройки сохранены');}if(e.target.id==='fileImport'){try{const f=e.target.files?.[0];if(!f)return;const txt=await f.text();state=parseBackup(txt);try{const data=JSON.parse(txt);coach=normalizeCoach(data.coach);mastery={...mkEmpty(),...(data.mastery||{})};saveMastery();personal=normalizePersonal(data.personal);savePersonal();workbench=validateWorkbenchState(data.workbench);saveWorkbench()}catch{coach=normalizeCoach(null)}saveCoach();save();localStorage.removeItem(ACTIVE);resumeAvailable=null;go('home');toast('Прогресс восстановлен');}catch(err){toast(err.message||'Не удалось открыть файл');}}});
-document.addEventListener('input',e=>{if(e.target.id==='nick')draft.name=e.target.value;if(e.target.id==='audit-input'&&audit)audit.value=e.target.value;if(e.target.id==='clinic-note'){mastery.notes[clinicKey]=e.target.value;saveMastery();}if(e.target.id==='wb-editor'){workbench.drafts[workbenchKind]=e.target.value.slice(0,25000);saveWorkbench();}});
+document.addEventListener('input',e=>{if(e.target.id==='nick')draft.name=e.target.value;if(e.target.id==='audit-input'&&audit)audit.value=e.target.value;if(e.target.id==='clinic-note'){mastery.notes[clinicKey]=e.target.value;saveMastery();}if(e.target.id==='wb-editor'){workbench.drafts[workbenchKind]=e.target.value.slice(0,25000);saveWorkbench();}if(e.target.matches?.('[data-spec-field]'))updateSpecForm();});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&dojo)dojo.paused=true;if(document.hidden&&session&&view==='game'){session.paused=true;activeSave();}else if(!document.hidden&&session&&view==='game'){lastTick=Date.now();render();}});
 document.addEventListener('keydown',e=>{if(view==='game'&&session&&!session.paused&&document.activeElement?.tagName!=='INPUT'){const idx=({1:0,2:1,3:2,a:0,b:1,c:2})[e.key.toLowerCase()];if(idx!==undefined){e.preventDefault();answer(idx)}if(e.key===' '&&session.feedback&&['learn','review'].includes(session.mode)){e.preventDefault();next()}}});
 render();
