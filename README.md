@@ -44,3 +44,8 @@ Deploy files at repo root (`index.html`, `app.mjs`, `mastery.mjs`, `studio.css`,
 ## Source of truth
 
 `CURRICULUM.md` maps the stages and learning outcomes to real primary sources. `mastery.mjs` includes original practice questions, source links and deterministic scoring. No copyrighted course text is mirrored beyond brief summaries. `tests/mastery.test.mjs` covers fairness and adaptive selection.
+
+
+## Personal AI Product Developer route (local-only)
+
+The dedicated career route offers eight outcomes mapped to Python, GitHub Skills, MDN, Microsoft, OpenAI, and Hugging Face original sources. The visitor selects a focus (products/agents/pipelines/tooling) and daily time (15/25/45 min), stored in `loop-personal-v1` only on the device. No inferred sensitive profile or name is published in the repository. Progress requires a self-reported artifact note, not just a high quiz score; code is not automatically graded. Export/import includes the personalized route.
