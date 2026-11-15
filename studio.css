@@ -77,3 +77,24 @@ html,body{background:#080a0f;color-scheme:dark;}body{font-family:Inter,'SF Pro D
 .workbench-view .wb-console pre{min-height:84px;max-height:36dvh;overflow:auto;user-select:text}
 @media(max-width:365px){.wb-heading h1{font-size:27px}.workbench-view .wb-editor{height:46dvh;font-size:13px}.wb-guided-field{padding:14px 12px}}
 @media(min-width:550px){.workbench-view{max-width:760px;margin-inline:auto}.workbench-view .wb-editor{height:55vh}.workbench-view .wb-actions button:first-child{grid-column:auto}}
+/* LOOP Focus v6: no intimidating wall of inputs or controls on first lesson */
+.wb-focus-view{max-width:760px;margin-inline:auto}
+.wb-focus{background:linear-gradient(165deg,#1c1a2a,#12151f);border:1px solid #3d3b58;border-radius:25px;padding:23px 20px;margin:26px 0 14px;box-shadow:0 22px 50px #0003}
+.wb-focus-top{display:flex;justify-content:space-between;gap:12px;color:#c6bded;font-size:11px;letter-spacing:.1em;font-weight:800}
+.wb-focus-progress{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px;margin:15px 0 28px}
+.wb-focus-progress span{height:5px;border-radius:6px;background:#3e4054;transition:background .15s ease}.wb-focus-progress span.active{background:#c1b1ff}
+.wb-focus h2{color:#f7f3ff;font-size:clamp(24px,7vw,32px);letter-spacing:-.04em;line-height:1.16;margin:0 0 14px}
+.wb-focus>p{color:#bcc0d1;font-size:14px;line-height:1.6;margin:0 0 20px}
+.wb-focus-label{display:block;font-size:11px;letter-spacing:.12em;color:#d5caee;font-weight:750;margin:18px 0 11px}
+.wb-focus textarea{display:block;width:100%;box-sizing:border-box;min-height:125px;background:#0d111c;border:1px solid #505269;border-radius:16px;resize:vertical;color:#f6f5ff;font:16px/1.55 ui-sans-serif,system-ui,sans-serif;padding:16px;outline:none}
+.wb-focus textarea:focus{border-color:#bcb0ff;box-shadow:0 0 0 3px #9e8cfd27}.wb-focus textarea::placeholder{color:#85899d}
+.wb-focus-example{border:1px solid #38394e;border-radius:13px;margin:17px 0;background:#1b1c2c;overflow:hidden}.wb-focus-example summary{cursor:pointer;padding:14px;color:#cec6f8;font-weight:650;font-size:13px;list-style:none}.wb-focus-example summary:before{content:'✧';margin-right:10px}
+.wb-focus-example[open] summary{border-bottom:1px solid #33364c}.wb-focus-example .wb-focus-sample{white-space:pre-line;color:#f3f1fb;font-size:13px;line-height:1.65;margin:12px 14px}.wb-focus-example small{display:block;color:#9fa0b6;padding:0 14px 14px}
+.wb-focus-actions{display:flex;gap:10px;margin:20px 0 0;align-items:stretch}.wb-focus-actions>.button{flex:1;min-height:54px;font-size:15px}.wb-focus-previous{padding:12px 15px;border:1px solid #49495c;background:#252536;border-radius:14px;color:#eee9fa;font-weight:700}
+.wb-focus-note{color:#a7a9bd;font-size:12px;line-height:1.6;margin:16px 0 0!important}
+.wb-focus-results{display:grid;gap:10px;margin:15px 0 20px}.wb-focus-results>div{display:flex;gap:12px;align-items:center;padding:12px;background:#252739;border-radius:12px;color:#ddd9ec;font-size:13px;line-height:1.5}.wb-focus-results>div span{color:#b9dbab}.wb-focus-results p{margin:0}
+.wb-focus-feedback{white-space:pre-wrap;background:#131722;border:1px solid #3b4050;border-radius:13px;padding:15px;color:#d9e4d9;font:12px/1.65 ui-monospace,monospace;margin-top:16px}
+.wb-advanced{margin:10px 0 16px;border:1px solid #34384c;border-radius:14px;background:#171925;overflow:hidden}.wb-advanced summary{padding:14px 16px;font-size:12px;color:#bcbdd4;cursor:pointer}.wb-advanced[open] summary{border-bottom:1px solid #33364a}.wb-small{display:block;width:calc(100% - 20px);margin:10px;background:#282b3c;border:1px solid #44465e;color:#ebe8fc;border-radius:10px;padding:12px;text-align:left;font-size:13px}
+.workbench-view .wb-file{margin-top:16px}.workbench-view .wb-actions{display:flex;flex-direction:column}.workbench-view .wb-actions button{font-size:14px!important}.workbench-view .wb-editor{min-height:48dvh}
+@media(max-width:360px){.wb-focus{padding:20px 14px}.wb-focus-actions>.button{font-size:13px}.wb-focus-previous{padding:9px}}
+@media(prefers-reduced-motion:reduce){.wb-focus-progress span{transition:none}}

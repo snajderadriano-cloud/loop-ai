@@ -5,7 +5,7 @@ import {fileURLToPath} from 'node:url';
 const root=path.dirname(fileURLToPath(import.meta.url));
 const read=f=>fs.readFileSync(path.join(root,f),'utf8');
 let html=read('index.html');
-const sources=['content.mjs','engine.mjs','coach.mjs','mastery.mjs','personal.mjs','workbench.mjs','app.mjs'];
+const sources=['content.mjs','engine.mjs','coach.mjs','mastery.mjs','personal.mjs','workbench.mjs','spec-flow.mjs','app.mjs'];
 let script=sources.map(f=>read(f).replace(/^import .*;\s*$/gm,'').replace(/\bexport\s+(?=(const|function|class)\b)/g,'')).join('\n\n');
 html=html.replace(/<link rel="manifest"[^>]*>/,'')
  .replace(/<link rel="icon"[^>]*>/,'')

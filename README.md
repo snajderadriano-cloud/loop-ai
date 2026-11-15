@@ -62,3 +62,10 @@ The dedicated career route offers eight outcomes mapped to Python, GitHub Skills
 - Mobile Python editor: large code field, quick syntax/indent keys, distinct Run and Check actions, actual Pyodide running in a worker. A successful print does not certify exercise tests.
 - Browser worker is reused while on the editor screen to avoid downloading Python on every run. It is not an OS terminal or cloud code execution.
 - PWA installation: old Android shortcut pointing at `loopai.com` is independent of this repo; uninstall/remove old shortcut and then install from the correct `github.io/loop-ai/` origin in normal Chrome. Export progress before uninstalling the PWA.
+
+## LOOP Focus 6.0 — simplified first lesson
+- First SPEC practice now presents **one question at a time** (five small screens), not all fields at once.
+- Additional Markdown and Python controls are collapsed; Python appears when its exercise is selected.
+- Existing drafts stay in `loop-workbench-v1`. Current wizard step is kept separately in `loop-workbench-focus-step`.
+- A summary and SPEC export appear after answering the questions. The checker reports structure, not true professional skill.
+- Beginner/mobile flow tested at 320, 390, 412 CSS pixels; 44 unit tests pass.

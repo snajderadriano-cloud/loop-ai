@@ -34,7 +34,8 @@ export function markRunResult(state,{passed,total,output,kind='python'}){const s
 // Keep the markdown draft as the single source of truth across both editor modes.
 export function splitSpecDraft(source){
  const text=String(source||'');
- const title=(text.match(/^#\s+(.+)$/m)||[])[1]||'Мой AI-проект';
+ const matchTitle=text.match(/^#[ \t]*([^\r\n]*)$/m);
+ const title=matchTitle?matchTitle[1].trim():'';
  const part=heading=>{
   const match=text.match(new RegExp('^##\\s+'+heading+'\\s*$', 'm'));
   if(!match)return '';

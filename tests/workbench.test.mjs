@@ -50,3 +50,10 @@ test('guided form produces valid SPEC and supports every acceptance gate',()=>{
  const draft=joinSpecDraft({title:'AI Notes',goal:'Дать пользователю возможность находить точные ответы по своим заметкам и не выдумывать источники.',scenarios:'1. Пользователь загружает три заметки и видит все названия.\n2. Пользователь вводит вопрос и видит ссылку на источник.\n3. При отсутствии данных пользователь видит честный ответ.',constraints:'- Информация не покидает телефон без явного разрешения.\n- Приложение работает без платных API и регистрации.',criteria:'1. После загрузки трёх файлов отображаются три названия.\n2. Если есть фраза, её источник открывается по нажатию.\n3. Если фраза отсутствует, выводится сообщение о её отсутствии.\n4. После перезагрузки данные пользователя сохраняются.'});
  assert.equal(inspectSpec(draft).valid,true);
 });
+test('empty wizard SPEC never shows a heading as project title',()=>{
+ const empty=joinSpecDraft({title:'',goal:'',scenarios:'',constraints:'',criteria:''});
+ const parsed=splitSpecDraft(empty);
+ assert.equal(parsed.title,'');
+ assert.equal(parsed.goal,'');
+ assert.equal(parsed.scenarios,'');
+});
